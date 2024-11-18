@@ -1,0 +1,5 @@
+file(GLOB_RECURSE SOURCE_FILES "*.cpp" "*.c")
+file(GLOB_RECURSE HEADER_FILES "*.hpp" "*.h")
+add_library(vcfdb_interface STATIC ${SOURCE_FILES} ${HEADER_FILES})
+target_include_directories(vcfdb_interface PUBLIC .)
+set_target_properties(vcfdb_interface PROPERTIES BUILD_INTERFACE .)
