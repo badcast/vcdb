@@ -45,7 +45,7 @@ std::istream *safeGetline(std::istream *is, std::string &t)
                 {
                     sb->sbumpc();
                     // special case for vCard folding lines
-                    if(sb->sgetc() == ' ' || sb->sgetc() == '\t' || sb->sgetc() == '=')
+                    if(sb->sgetc() == ' ' || sb->sgetc() == '\t' || sb->sgetc() == '=' || sb->sgetc() == ';')
                     {
                         sb->sbumpc();
                         continue;
@@ -235,9 +235,9 @@ std::vector<vCard> TextReader::parseCards()
         {
             vcards.push_back(current);
             trySkipContent = false;
+            started = false;
             // Empty the current card
             current = vCard();
-            started = false;
         }
         else if((line.find("VERSION") != std::string::npos) && started)
         {
@@ -257,17 +257,25 @@ std::vector<vCard> TextReader::parseCards()
         else if(started)
         {
             // Check data (PHOTO), (SOUND)
-            if(line.find("PHOTO") != std::string::npos || line.find("SOUND") != std::string::npos)
+            if(line.find("X-CUSTOM") != std::string::npos || line.find("PHOTO") != std::string::npos || line.find("SOUND") != std::string::npos)
             {
                 trySkipContent = true;
                 continue;
             }
-            if(trySkipContent && ( line.empty() || line.at(0) == ' '))
+            if(line.empty() || trySkipContent && line.at(0) == ' ')
             {
                 continue;
             }
-            vCardProperty prop = TextReader::parseProperty(line);
-            current.addProperty(prop);
+            try
+            {
+                vCardProperty prop = TextReader::parseProperty(line);
+                current.addProperty(prop);
+            }
+            catch(std::exception)
+            {
+                continue;
+            }
+
             trySkipContent = false;
         }
     }

@@ -1,7 +1,7 @@
-add_executable(vcfdb main.cpp)
+add_executable(vcdb main.cpp)
 
-add_subdirectory(3rdparty/vCard)
 add_subdirectory(Interface)
-target_link_libraries(vcfdb_interface PUBLIC libVCard)
 
-target_link_libraries(vcfdb PUBLIC libVCard vcfdb_interface)
+find_package(OpenMP REQUIRED)
+
+target_link_libraries(vcdb PUBLIC vcdbInterface stdc++fs OpenMP::OpenMP_CXX)

@@ -1,2 +1,2 @@
-# vcfdb
-VCF Common Data Base
+# vcdb
+Virtual Common Data Base

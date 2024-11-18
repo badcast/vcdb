@@ -1,114 +1,64 @@
 #include <iostream>
+#include <filesystem>
 #include <string>
-#include <cstring>
 #include <vector>
-#include <fstream>
-#include <unistd.h>
+#include <omp.h>
+#include <mutex>
 
-// Virtual Card Structs
-#include <vcard.h>
-// Parser
-#include <text_io.h>
+#include "vcdb.hpp"
 
 using namespace std;
-
-struct node_t
-{
-    string name;
-    string tel;
-    char countrycode[8];
-};
-
-struct nodefile_t
-{
-    string filename;
-    char sha256sum[64];
-    vector<node_t> nodes;
-};
-
-string get_sha256sum(const char *file)
-{
-    string _result;
-
-    constexpr int sha256_size = 64; // 256 bits = 64 bytes
-
-#ifdef __unix__
-
-    _result = "/usr/bin/sha256sum \"";
-    _result += file;
-    _result += "\"";
-
-    FILE *prog = popen(_result.data(), "r");
-
-    if(prog != nullptr)
-    {
-        _result.resize(sha256_size);
-
-        fread(_result.data(), 1, _result.size(), prog);
-
-        fclose(prog);
-    }
-    else
-        _result.clear();
-#endif
-    return _result;
-}
-
-bool getnode(const char *filename, nodefile_t *_node)
-{
-    if(_node == nullptr || filename == nullptr)
-    {
-        cerr << "var is null" << endl;
-        return false;
-    }
-
-    ifstream file;
-
-    file.open(filename);
-
-    if(!file)
-    {
-        cerr << "Fail load vcard file" << endl;
-        return false;
-    }
-
-    std::vector<vCard> vcards;
-    TextReader tr {file};
-
-    /* try
-     {*/
-    vcards = tr.parseCards();
-
-    file.close();
-    /* }
-    catch(exception &ex)
-    {
-        cerr << ex.what() << endl;
-        return false;
-    }*/
-
-    // Fill sha256sum field
-    memcpy(_node->sha256sum, get_sha256sum(filename).data(), sizeof(_node->sha256sum));
-
-    return true;
-}
+namespace fs = std::filesystem;
 
 int main()
 {
-    ifstream file;
+    constexpr auto TargetDir = "/media/storage/._Private";
+    std::vector<VCDataBase> databases;
+    std::mutex mtx;
 
-    nodefile_t node;
+    if(fs::exists(TargetDir) && fs::is_directory(TargetDir)){
+        std::size_t total = 0;
+        std::size_t totalBytes = 0;
+        std::vector<std::string> files;
+        for(auto & entry : fs::directory_iterator(TargetDir))
+        {
+            if(!fs::is_regular_file(entry.status()))
+                continue;
+            files.emplace_back(entry.path());
+        }
+#pragma omp parallel for
+        for(size_t x = 0; x < files.size(); ++x)
+        {
+            std::cout << "Query File: " << files[x] << std::endl;
+            std::cout << " Status: ";
+            std::tuple<bool,VCDataBase> queryResult = vcdb::import::from_file_name(files[x]);
+            if(!std::get<0>(queryResult))
+            {
+                std::cout << "Invalid" << std::endl;
+                continue;
+            }
+            std::cout << "Good" << std::endl;
+            std::cout << " Nodes: " << std::get<1>(queryResult).nodes.size() << std::endl;
+            std::cout << " Sha256sums: " << std::get<1>(queryResult).sha256sum << std::endl;
+            mtx.lock();
+            totalBytes += fs::file_size(files[x]);
+            total += std::get<1>(queryResult).nodes.size();
+            if(!std::get<1>(queryResult).nodes.empty())
+                databases.push_back(std::get<1>(queryResult));
+            mtx.unlock();
+            std::cout << std::endl;
+        }
+        std::cout << std::endl << std::endl;
+        std::cout << "||=================================||" << std::endl;
+        std::cout << "|| Files: " << databases.size() << std::endl;
+        std::cout << "|| Total load entries: " << total << std::endl;
+        std::cout << "|| Total Mb: " <<  totalBytes / 1024 / 1024 << std::endl;
+        std::cout << "||=================================||" << std::endl;
 
-    bool result = getnode("/media/storage/._Private/Контакты_002 (2).vcf", &node);
+        std::cout << "SQL3 syncing." << std::endl;
+        vcdb::db::sync(databases, "/tmp/touch.db");
+        std::cout << "SQL3 sync complete" << std::endl;
 
-    if(!result)
-        cerr << "Error load node" << endl;
-    else
-    {
-        cout << "Node file: " << node.filename << endl;
-        cout << "Node sha256: " << node.sha256sum << endl;
-        cout << "Node elems: " << node.nodes.size() << endl;
     }
-
     return 0;
 }

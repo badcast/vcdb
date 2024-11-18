@@ -156,6 +156,9 @@ public:
     std::string& getName() { return m_name; }
     std::string& getGroup() { return m_group; }
 
+    std::string getCName() const { return m_name; }
+    std::string getCGroup() const { return m_group; }
+
     /**
      * Returns joined values list in one string
      */
@@ -187,6 +190,8 @@ public:
             const std::string& suffix = "", const vCardParamMap& params = vCardParamMap());
     static vCardProperty createOrganization(const std::string& name, const std::vector<std::string>& levels = std::vector<std::string>(), const vCardParamMap& params = vCardParamMap());
 
+    static vCardProperty createEmpty();
+
 protected:
     std::string m_group;
     std::string m_name;
@@ -207,7 +212,7 @@ public:
      */
     int count() const { return m_properties.size(); };
 
-    void addProperty(const vCardProperty& property);
+    vCardProperty& addProperty(const vCardProperty& property);
 
     /**
      * Removes all found properties with the specified name
@@ -219,11 +224,12 @@ public:
     vCardVersion getVersion() { return m_version; }
     std::string getVersionStr();
     void setVersion(vCardVersion v) { m_version = v; }
+    vCardProperty at(const std::string& name) const;
 
     /**
      * Returns first found property with the specified name
      */
-    vCardProperty& operator[] (std::string name);
+    vCardProperty& operator[] (const std::string& name);
 
     /**
      * Shortcut for adding property to the vCard

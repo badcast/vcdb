@@ -158,17 +158,27 @@ vCardProperty vCardProperty::createBirthday(const int year, const int month, con
     return vCardProperty(VC_BIRTHDAY, buffer);
 }
 
-
+vCardProperty vCardProperty::createEmpty(){
+    return vCardProperty{};
+}
 
 // ======================================================================
 
-vCardProperty& vCard::operator[] (std::string name) {
+vCardProperty& vCard::operator[] (const std::string &name) {
     for(vCardProperty& p: m_properties) {
         if (p.getName() == name)
             return p;
     }
+    return addProperty({name, ""});
+}
 
-    throw std::runtime_error("Property not found");
+vCardProperty vCard::at(const std::string &name) const
+{
+    for(const vCardProperty& p: m_properties) {
+        if (p.getCName().c_str() == name)
+            return p;
+    }
+    return {};
 }
 
 vCard & vCard::operator << (const vCardProperty &p)
@@ -177,9 +187,10 @@ vCard & vCard::operator << (const vCardProperty &p)
     return *this;
 }
 
-void vCard::addProperty(const vCardProperty& property)
+vCardProperty& vCard::addProperty(const vCardProperty& property)
 {
     m_properties.push_back(property);
+    return m_properties.back();
 }
 
 void vCard::removeProperty(std::string name)
