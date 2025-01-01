@@ -5,9 +5,9 @@
 
 namespace vcdb::db
 {
+
 void sync(std::vector<VCDataBase>& vcdb, const std::string &filename)
 {
-
     sqlite3 *db;
     int exitv = sqlite3_open(filename.c_str(), &db);
 
@@ -15,46 +15,50 @@ void sync(std::vector<VCDataBase>& vcdb, const std::string &filename)
         return;
 
     // init sql3 db
-    const char *sqlCreateTable = "CREATE TABLE IF NOT EXISTS Contacts ("
-                                 "ID INTEGER PRIMARY KEY AUTOINCREMENT, "
+    const char *sqlCreateTable = "CREATE TABLE IF NOT EXISTS VCDB ("
                                  "Name TEXT NOT NULL, "
                                  "Telephone TEXT NOT NULL, "
                                  "Address TEXT NOT NULL, "
                                  "City TEXT NOT NULL);";
-    exitv = sqlite3_exec(db, sqlCreateTable, nullptr, 0, nullptr);
+    exitv = sqlite3_exec(db, sqlCreateTable, nullptr, nullptr, nullptr);
     if(exitv)
-        return;
-
-    // inserts
-    const char *sqlInsert = "INSERT INTO Contacts (Name, Telephone, Address, City) VALUES (?, ?, ?, ?);";
-    sqlite3_stmt *stmt;
-
-    if(sqlite3_prepare_v2(db, sqlInsert, -1, &stmt, nullptr) != SQLITE_OK)
     {
         sqlite3_close(db);
         return;
     }
 
+    // inserts
+    const char *sqlInsert = "INSERT INTO VCDB (Name, Telephone, Address, City) VALUES (?, ?, ?, ?);";
+    sqlite3_stmt *stmtInsert;
 
-    for( VCDataBase & _db : vcdb)
+    if(sqlite3_prepare_v2(db, sqlInsert, -1, &stmtInsert, nullptr) != SQLITE_OK)
     {
-        for(VCNode & node : _db.nodes)
+        sqlite3_close(db);
+        return;
+    }
+
+    sqlite3_exec(db, "BEGIN TRANSACTION;", nullptr, nullptr, nullptr);
+    for(size_t x = 0; x < vcdb.size(); ++x)
+    {
+        VCDataBase * _db = &vcdb[x];
+        for(VCNode & node : _db->nodes)
         {
-            sqlite3_bind_text(stmt, 1, node.Name.c_str(), -1, SQLITE_STATIC);
-            sqlite3_bind_text(stmt, 2, node.Tel.c_str(), -1, SQLITE_STATIC);
-            sqlite3_bind_text(stmt, 3, node.address.c_str(), -1, SQLITE_STATIC);
-            sqlite3_bind_text(stmt, 4, node.Country.c_str(), -1, SQLITE_STATIC);
-            if(sqlite3_step(stmt) != SQLITE_DONE)
+            sqlite3_bind_text(stmtInsert, 1, node.Name.c_str(), -1, SQLITE_STATIC);
+            sqlite3_bind_text(stmtInsert, 2, node.Tel.c_str(), -1, SQLITE_STATIC);
+            sqlite3_bind_text(stmtInsert, 3, node.address.c_str(), -1, SQLITE_STATIC);
+            sqlite3_bind_text(stmtInsert, 4, node.Country.c_str(), -1, SQLITE_STATIC);
+            if(sqlite3_step(stmtInsert) != SQLITE_DONE)
             {
                 // todo: fail message
             }
-
-            sqlite3_reset(stmt);
+            sqlite3_reset(stmtInsert);
         }
     }
+    sqlite3_exec(db, "END TRANSACTION;", nullptr, nullptr, nullptr);
 
-    sqlite3_finalize(stmt);
+    exitv = sqlite3_exec(db, "SELECT DISTINCT Name, Telephone, Address, City FROM VCDB;", nullptr, nullptr, nullptr);
 
+    sqlite3_finalize(stmtInsert);
     sqlite3_close(db);
 }
 }
