@@ -28,6 +28,7 @@ std::tuple<bool,VCDataBase> from_file_name(const std::string &filename)
     {
         node = {};
         node.Name = helper::url_decode(vcard[VC_NAME].getValue());
+        node.FormatName = helper::url_decode(vcard[VC_FORMATTED_NAME].getValue());
         node.Tel = vcard[VC_TELEPHONE].getValue();
         node.address = vcard[VC_ADDRESS].getValue();
         database.nodes.emplace_back(node);

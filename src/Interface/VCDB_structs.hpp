@@ -8,6 +8,7 @@ struct VCNode;
 struct VCNode
 {
     std::string Name;
+    std::string FormatName;
     std::string Tel;
     std::string address;
     int CountryCode;

@@ -10,7 +10,7 @@
 using namespace std;
 namespace fs = std::filesystem;
 
-int main()
+int main(int argc, char **argv)
 {
     constexpr auto TargetDir = "/media/storage/._Private";
     std::vector<VCDataBase> databases;
@@ -30,10 +30,8 @@ int main()
         for(size_t x = 0; x < files.size(); ++x)
         {
             std::tuple<bool,VCDataBase> queryResult = vcdb::import::from_file_name(files[x]);
-            if(!std::get<0>(queryResult))
-            {
+            if(!std::get<0>(queryResult) || std::get<1>(queryResult).nodes.empty())
                 continue;
-            }
             mtx.lock();
             totalBytes += fs::file_size(files[x]);
             total += std::get<1>(queryResult).nodes.size();
@@ -44,7 +42,7 @@ int main()
         // Query statistics
         for(size_t x = 0; x < databases.size(); ++x)
         {
-            std::cout << "Query File: " << files[x] << std::endl;
+            std::cout << "Query File: " << databases[x].filename << std::endl;
             std::cout << " Nodes: " << databases[x].nodes.size() << std::endl;
             std::cout << " Sha256sums: " << databases[x].sha256sum << std::endl << std::endl;
         }
@@ -55,9 +53,13 @@ int main()
         std::cout << "||=================================||" << std::endl;
 
         std::cout << "SQL3 syncing." << std::endl;
+        std::remove("/tmp/touch.db");
         vcdb::db::sync(databases, "/tmp/touch.db");
         std::cout << "SQL3 sync complete" << std::endl;
-
+    }
+    else
+    {
+        std::cout << TargetDir << " is not an directory or is not exists." << std::endl;
     }
     return 0;
 }

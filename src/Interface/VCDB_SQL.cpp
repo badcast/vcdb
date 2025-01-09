@@ -1,4 +1,6 @@
+#ifdef VCDB_HAS_SQLITE3
 #include <sqlite3.h>
+#endif
 
 #include "vcdb.hpp"
 #include "VCDB_SQL.hpp"
@@ -8,6 +10,7 @@ namespace vcdb::db
 
 void sync(std::vector<VCDataBase>& vcdb, const std::string &filename)
 {
+#ifdef VCDB_HAS_SQLITE3
     sqlite3 *db;
     int exitv = sqlite3_open(filename.c_str(), &db);
 
@@ -60,5 +63,6 @@ void sync(std::vector<VCDataBase>& vcdb, const std::string &filename)
 
     sqlite3_finalize(stmtInsert);
     sqlite3_close(db);
+#endif
 }
 }

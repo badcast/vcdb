@@ -169,10 +169,6 @@ vCardProperty TextReader::parseProperty(std::string line)
         if(name != VC_VERSION)
         {
             std::string params_string = line.substr(first_semicln_pos + 1, colon_pos - first_semicln_pos - 1);
-            if(params_string == "CELL;PREF")
-            {
-                int xx = 0;
-            }
             // Issue: Fix error on CELL or other single type.
             if(params_string.find("=") == std::string::npos)
             {

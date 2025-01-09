@@ -1,9 +1,18 @@
 #include <string>
 #include <algorithm>
 #include <iomanip>
+#include <fstream>
 
 #include "vcdb.hpp"
 #include "VCDB_Helper.hpp"
+
+#ifdef VCDB_HAS_OPENSSL
+#include <openssl/sha.h>
+#endif
+
+#ifdef __unix__
+#define SHA256_UNIX_UTIL 1
+#endif
 
 using namespace vcdb;
 
@@ -11,27 +20,49 @@ namespace vcdb::helper{
 
 std::string get_sha256sum(const std::string &filename)
 {
+    std::string _result {};
+
+#ifdef VCDB_HAS_OPENSSL
+    FILE *file;
+    char _buf[1024];
+    size_t num;
+    SHA256_CTX sha256;
+    unsigned char hash[SHA256_DIGEST_LENGTH+3];
+
+    file = fopen(filename.c_str(), "rb");
+    if(file == nullptr)
+    {
+        return {};
+    }
+
+    SHA256_Init(&sha256);
+    while((num=fread(_buf, sizeof(char), sizeof(_buf), file)) > 0)
+    {
+        SHA256_Update(&sha256, _buf, num);
+    }
+    fclose(file);
+    SHA256_Final(hash, &sha256);
+
+    for(int x = 0; x < SHA256_DIGEST_LENGTH; ++x)
+    {
+        snprintf(reinterpret_cast<char*>(_buf), sizeof(3), "%02x", hash[x]);
+        _result += reinterpret_cast<char*>(_buf);
+    }
+#elif defined(SHA256_UNIX_UTIL)
     constexpr int sha256_size = 64; // 256 bits = 64 bytes
-    std::string _result;
-
-#ifdef __unix__
-
+    FILE *pipe;
     _result = "/usr/bin/sha256sum \"";
     _result += filename;
     _result += "\"";
-
-    FILE *prog = popen(_result.data(), "r");
-    if(prog != nullptr)
+    pipe = popen(_result.data(), "r");
+    if(pipe != nullptr)
     {
         _result.resize(sha256_size);
-
-        fread(_result.data(), 1, _result.size(), prog);
-
-        fclose(prog);
+        fread(_result.data(), 1, _result.size(), pipe);
+        fclose(pipe);
     }
     else
         _result.clear();
-
 #endif
 
     return _result;
