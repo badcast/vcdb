@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <iostream>
 #include <filesystem>
 #include <string>
@@ -10,17 +11,57 @@
 using namespace std;
 namespace fs = std::filesystem;
 
+std::string defaultSQDBFile()
+{
+    constexpr auto DBFIleName = "vcdbsql.db";
+    std::string retval;
+#ifdef __linux__
+    retval = "/tmp/";
+#elif WIN32
+    retval = std::getenv("TEMP");
+    retval += '/';
+#endif
+    retval += DBFIleName;
+    return retval;
+}
+
+void helpMsg()
+{
+    std::cout << "vcdb <Target Directory or File> <Optinal SQL3 Filepath>" << std::endl;
+}
+
 int main(int argc, char **argv)
 {
-    constexpr auto TargetDir = "/media/storage/._Private";
+    std::string TargetDir;
+    std::string sqdbFile;
     std::vector<VCDataBase> databases;
     std::mutex mtx;
 
-    if(fs::exists(TargetDir) && fs::is_directory(TargetDir)){
+    if(argc > 3)
+    {
+        std::cout << "Argument is long" << std::endl;
+        helpMsg();
+        return 1;
+    }
+    if(argc == 1)
+    {
+        std::cout << "Target Directory is not set" << std::endl;
+        helpMsg();
+        return 1;
+    }
+    if(argc == 3)
+        sqdbFile = argv[2];
+    else
+        sqdbFile = defaultSQDBFile();
+
+    TargetDir = argv[1];
+
+    if(fs::exists(TargetDir) && fs::is_directory(TargetDir))
+    {
         std::size_t total = 0;
         std::size_t totalBytes = 0;
         std::vector<std::string> files;
-        for(auto & entry : fs::directory_iterator(TargetDir))
+        for(auto &entry : fs::directory_iterator(TargetDir))
         {
             if(!fs::is_regular_file(entry.status()))
                 continue;
@@ -29,8 +70,12 @@ int main(int argc, char **argv)
 #pragma omp parallel for
         for(size_t x = 0; x < files.size(); ++x)
         {
-            std::tuple<bool,VCDataBase> queryResult = vcdb::import::from_file_name(files[x]);
-            if(!std::get<0>(queryResult) || std::get<1>(queryResult).nodes.empty())
+            std::cout << "Query File: " << files[x] << std::endl;
+            std::cout << " Status: ";
+            std::tuple<bool, VCDataBase> queryResult = vcdb::import::from_file_name(files[x]);
+            if(!std::get<0>(queryResult))
+            {
+                std::cout << "Invalid" << std::endl;
                 continue;
             mtx.lock();
             totalBytes += fs::file_size(files[x]);
@@ -49,17 +94,12 @@ int main(int argc, char **argv)
         std::cout << "||=================================||" << std::endl;
         std::cout << "|| Files: " << databases.size() << std::endl;
         std::cout << "|| Total load entries: " << total << std::endl;
-        std::cout << "|| Total Mb: " <<  totalBytes / 1024 / 1024 << std::endl;
+        std::cout << "|| Total Mb: " << totalBytes / 1024 / 1024 << std::endl;
         std::cout << "||=================================||" << std::endl;
 
         std::cout << "SQL3 syncing." << std::endl;
-        std::remove("/tmp/touch.db");
-        vcdb::db::sync(databases, "/tmp/touch.db");
+        vcdb::db::sync(databases, sqdbFile);
         std::cout << "SQL3 sync complete" << std::endl;
-    }
-    else
-    {
-        std::cout << TargetDir << " is not an directory or is not exists." << std::endl;
     }
     return 0;
 }
