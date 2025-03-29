@@ -27,7 +27,7 @@ std::string defaultSQDBFile()
 
 void helpMsg()
 {
-    std::cout << "vcdb <Target Directory or File> <Optinal SQL3 Filepath>" << std::endl;
+    std::cout << "vcdb <Target Directory or File> <Optional SQL3 Filepath>" << std::endl;
 }
 
 int main(int argc, char **argv)
@@ -70,18 +70,16 @@ int main(int argc, char **argv)
 #pragma omp parallel for
         for(size_t x = 0; x < files.size(); ++x)
         {
-            std::cout << "Query File: " << files[x] << std::endl;
-            std::cout << " Status: ";
             std::tuple<bool, VCDataBase> queryResult = vcdb::import::from_file_name(files[x]);
             if(!std::get<0>(queryResult))
             {
-                std::cout << "Invalid" << std::endl;
                 continue;
+            }
             mtx.lock();
             totalBytes += fs::file_size(files[x]);
             total += std::get<1>(queryResult).nodes.size();
             if(!std::get<1>(queryResult).nodes.empty())
-                databases.push_back(std::get<1>(queryResult));
+                databases.push_back(std::move(std::get<1>(queryResult)));
             mtx.unlock();
         }
         // Query statistics
