@@ -19,6 +19,7 @@ void sync(std::vector<VCDataBase>& vcdb, const std::string &filename)
 
     // init sql3 db
     const char *sqlCreateTable = "CREATE TABLE IF NOT EXISTS VCDB ("
+                                 "id INT NOT NULL AUTO_INCREMENT PRIMARY KEY"
                                  "Name TEXT NOT NULL, "
                                  "Telephone TEXT NOT NULL, "
                                  "Address TEXT NOT NULL, "

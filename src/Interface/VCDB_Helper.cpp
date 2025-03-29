@@ -27,7 +27,7 @@ std::string get_sha256sum(const std::string &filename)
     char _buf[1024];
     size_t num;
     SHA256_CTX sha256;
-    unsigned char hash[SHA256_DIGEST_LENGTH+3];
+    unsigned char hash[SHA256_DIGEST_LENGTH];
 
     file = fopen(filename.c_str(), "rb");
     if(file == nullptr)
